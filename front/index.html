@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.1.2/dist/axios.min.js"></script>
+    <style>
+        div {
+            padding: 10px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+</head>
+
+<body onload="load_data()">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="login.html">Login</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="index.html">Supermarket Products</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="checkout.html">Cart</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+    </div>
+    <div id="display" class="row mt-4">
+        <!-- Cards will be displayed here -->
+    </div>
+    <div id="cartDis">
+        <div id="cartPrdDisplay" class="row mt-4">
+        </div>
+    </div>
+
+    <script>
+        let cart = []
+        let products = []
+        const MY_SERVER = "http://127.0.0.1:8000/"
+        const load_display = async () => {
+            const res = await axios.get(MY_SERVER + "/products")
+            products = res.data
+            display.innerHTML = products.map((prod, i) => `
+                <div class="card" style="width: 18rem; margin: 10px;">
+                    <img src="${MY_SERVER + prod.img}" class="card-img-top" alt="Product Image">
+                    <div class="card-body">
+                        <h5 class="card-title"> ${prod.description}</h5>
+                        <p class="card-text">Price: ${prod.price}$</p>
+                        <p class="card-text">id: ${prod.id}</p>
+                        <p class="card-text">Category: ${prod.category}</p>
+                        <button onclick="buy(${i})">Buy</button>
+                    </div>
+                </div>
+            `).join('')
+        }
+
+        const buy = (index) => {
+            product = products[index]
+            const existingItem = cart.filter(item => item.id === product.id)[0];
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({
+                    id: product.id,
+                    description: product.description,
+                    price: product.price,
+                    img: product.img,
+                    category: product.category,
+                    quantity: 1
+                });
+            }
+            save_data()
+        };
+
+        const add_to_quantity = (index) => {
+            cart[index].quantity += 1
+            save_data()
+            // upd_cart_display()
+        }
+
+        const remove_quantity = (index) => {
+            if (cart[index].quantity > 1) {
+                cart[index].quantity -= 1
+            }
+            else {
+                cart.pop(cart[index])
+                showToast('You Remove The Product From The Cart', 'danger')
+            }
+            save_data()
+            // upd_cart_display()
+        }
+
+        const upd_cart_display = () => {
+            let total = 0.0
+            for (let index = 0; index < cart.length; index++) {
+                total += (cart[index].quantity * cart[index].price);
+            }
+            cartDis.innerHTML = `<div id="cartPrdDisplay" class="row mt-4"></div>`
+            cartPrdDisplay.innerHTML = cart.map((item, i) => `
+                <div class="card" style="width: 18rem; margin: 10px;">
+                    <img src="${MY_SERVER + item.img}" class="card-img-top" alt="Product Image">
+                    <div class="card-body">
+                        <h5 class="card-title"> ${item.description}</h5>
+                        <p class="card-text">Price: ${item.price * item.quantity}$</p>
+                        <p class="card-text">Quantity: ${item.quantity}</p>
+                        <button onclick="remove_quantity(${i})">-</button>
+                        <button onclick="add_to_quantity(${i})">+</button>
+                    </div>
+                </div>
+            `).join('')
+
+            cartDis.innerHTML += `<h6>Your Total is ${total}$</h6>
+            <button class='btn'>Go To Checkout</button>`
+        }
+
+        const load_data = () => {
+            temp = localStorage.getItem('cart')
+            if (temp === null) {
+                showToast('no data found', 'warning')
+            } else {
+                cart = JSON.parse(temp)
+                if (cart.length == 0) {
+                    showToast('cart is empty', 'warning')
+                } else {
+                    showToast('Data Loaded', 'success')
+                }
+                load_display()
+                // upd_cart_display()
+            }
+        }
+
+        const save_data = () => (localStorage.setItem('cart', JSON.stringify(cart)))
+
+        // modular toasting function
+        function showToast(message, type) {
+            const toastContainer = document.querySelector('.toast-container');
+
+            const toast = document.createElement('div');
+            toast.className = `toast bg-${type}`;
+            toast.innerHTML = `
+        <div class="toast-body text-white">
+            ${message}
+        </div>`;
+
+            toastContainer.appendChild(toast);
+
+            const bsToast = new bootstrap.Toast(toast, {
+                autohide: true,
+                delay: 3000 // Adjust the delay to control how long the toast is displayed
+            });
+            bsToast.show();
+
+            // showSimpleToast('This is a success toast message', 'success');
+            // showSimpleToast('This is a warning toast message', 'warning');
+            // showSimpleToast('This is an error toast message', 'danger');
+            // showSimpleToast('This is an info toast message', 'info');
+        }
+
+    </script>
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>
